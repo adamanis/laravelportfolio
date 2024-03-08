@@ -18,7 +18,7 @@ class ChatController extends Controller
     {
         $text = $request->input('question');
         try {
-            HandleStreamResponseJob::dispatch($text)->onQueue('database');
+            HandleStreamResponseJob::dispatch(session()->getId(), $text)->onQueue('database');
         } catch (\Exception $e) {
             Log::error($e->getMessage(), $e->getTrace());
         }

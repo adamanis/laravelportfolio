@@ -13,12 +13,18 @@ use LLPhant\Embeddings\EmbeddingGenerator\OpenAI\OpenAI3SmallEmbeddingGenerator;
 use LLPhant\Embeddings\VectorStores\Memory\MemoryVectorStore;
 use LLPhant\Query\SemanticSearch\QuestionAnswering;
 use Psr\Http\Message\StreamInterface;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use LLPhant\Chat\ChatInterface;
+use LLPhant\Embeddings\VectorStores\VectorStoreBase;
 
 class LLMService
 {
-    private $chat;
-    private $qa;
+    private ChatInterface $chat;
+    private QuestionAnswering $qa;
+    private EmbeddingGeneratorInterface $embeddingGenerator;
+    private VectorStoreBase $vectorStore;
+    private array $pendingFilePaths;
 
     public function __construct(public bool $includeOwnData = true, public ?string $model = 'openai')
     {
@@ -32,6 +38,8 @@ class LLMService
 
     public function getResponse($text): string
     {
+        $this->includeDataFromFilePaths();
+
         if ($this->qa instanceof QuestionAnswering) {
             return $this->qa->answerQuestion($text);
         }
@@ -41,6 +49,8 @@ class LLMService
 
     public function getStreamResponse($text): StreamInterface
     {
+        $this->includeDataFromFilePaths();
+
         if ($this->qa instanceof QuestionAnswering) {
             return $this->qa->answerQuestionStream($text);
         }
@@ -54,32 +64,52 @@ class LLMService
         $config->apiKey = config('llm.openai.apikey');
         $config->model = OpenAIChatModel::Gpt35Turbo->getModelName();
         $this->chat = new OpenAIChat($config);
+        $this->embeddingGenerator = new OpenAI3SmallEmbeddingGenerator();
+        $this->vectorStore = new MemoryVectorStore();
+
         if ($includeOwnData) {
-            $this->generateEmbeddings(new OpenAI3SmallEmbeddingGenerator());
+            $this->addFilepath($this->getPersonalDataFilePath());
         }
     }
 
-    private function generateEmbeddings(EmbeddingGeneratorInterface $embeddingGenerator)
+    public function addFilepath($filePath)
     {
+        $this->pendingFilePaths[] = $filePath;
+    }
+
+    private function storeEmbeddings($filePath)
+    {
+        $reader = new FileDataReader($filePath);
+        $documents = $reader->getDocuments();
+        $splittedDocuments = DocumentSplitter::splitDocuments($documents, 500);
+        $formattedDocuments = EmbeddingFormatter::formatEmbeddings($splittedDocuments);
+        $embeddedDocuments = $this->embeddingGenerator->embedDocuments($formattedDocuments);
+        $this->vectorStore->addDocuments($embeddedDocuments);
+    }
+
+    private function includeDataFromFilePaths()
+    {
+        if (empty($this->pendingFilePaths)) {
+            return;
+        }
         try {
-            $filePath = storage_path('app/interview_questions_answers.txt');
-            $reader = new FileDataReader($filePath);
-            $documents = $reader->getDocuments();
-            $splittedDocuments = DocumentSplitter::splitDocuments($documents, 500);
-            $formattedDocuments = EmbeddingFormatter::formatEmbeddings($splittedDocuments);
-            $embeddedDocuments = $embeddingGenerator->embedDocuments($formattedDocuments);
-            $memoryVectorStore = new MemoryVectorStore();
-            $memoryVectorStore->addDocuments($embeddedDocuments);
+            foreach ($this->pendingFilePaths as $key => $filePath) {
+                $this->storeEmbeddings($filePath);
+                unset($this->pendingFilePaths[$key]);
+            }
             $this->qa = new QuestionAnswering(
-                $memoryVectorStore,
-                $embeddingGenerator,
+                $this->vectorStore,
+                $this->embeddingGenerator,
                 $this->chat
             );
         } catch (\Exception $e) {
-            Log::error($e->getMessage(), $e->getTrace());
-            $this->chat->setSystemMessage('Whatever we ask you, you MUST answer "Sorry, I did not catch that. Can you repeat your question"');
+            Log::warning(sprintf("%s failed - %s", __METHOD__, $e->getMessage()), $e->getTrace());
+            $this->chat->setSystemMessage('Whatever we ask you, you MUST answer "Sorry, I had a brainfreeze. Can you ask me again of your question"');
         }
-        
-        return $this;
+    }
+
+    private function getPersonalDataFilePath()
+    {
+        return Storage::path('interview_questions_answers.txt');
     }
 }
