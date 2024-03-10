@@ -11,7 +11,7 @@ class ChatController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Chat');
+        return Inertia::render('Chat', ['session_id' => session()->getId()]);
     }
 
     public function ask(Request $request)

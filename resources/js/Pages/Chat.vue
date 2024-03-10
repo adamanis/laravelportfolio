@@ -2,24 +2,25 @@
 import {ref, onMounted, reactive} from 'vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
+const props = defineProps({ session_id: String })
+
 const texts = ref<string[]>([]);
 
 const form = useForm({
     question: null,
 })
 
-const listenForTextStream = () => {
+const listenForTextStream = (session_id? : string) => {
     console.log('listening');
-    window.Echo.channel('text-stream').listen('StreamTextChunk', (data: any) => {
+    window.Echo.channel(session_id + '_text-stream').listen('StreamTextChunk', (data: any) => {
         console.log(data);
         texts.value.push(data.textChunk);
     });
 };
 
 onMounted(() => {
-    listenForTextStream();
+    listenForTextStream(props.session_id);
 });
-
 </script>
 
 <template>

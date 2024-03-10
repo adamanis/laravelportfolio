@@ -15,13 +15,15 @@ class StreamTextChunk implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    private string $sessionID;
     public string $textChunk;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(string $textChunk)
+    public function __construct(string $sessionID, string $textChunk)
     {
+        $this->sessionID = $sessionID;
         $this->textChunk = $textChunk;
     }
 
@@ -33,8 +35,8 @@ class StreamTextChunk implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new Channel('text-stream'),
-            // new PrivateChannel('channel-name'),
+            new Channel($this->sessionID . '_text-stream'),
+            // new PrivateChannel($this->sessionID . '_text-stream'),
         ];
     }
 }

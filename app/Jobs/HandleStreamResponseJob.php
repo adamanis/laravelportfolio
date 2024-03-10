@@ -52,7 +52,7 @@ class HandleStreamResponseJob implements ShouldQueue
                 if (empty($sentences[$i])) {
                     continue;
                 }
-                event(new StreamTextChunk($sentences[$i]));
+                event(new StreamTextChunk($this->sessionID, $sentences[$i]));
                 usleep(1000); // Sleep for 10 milliseconds (adjust as needed)
             }
 
