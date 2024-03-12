@@ -22,6 +22,8 @@
     },
     "dependencies": {
         "laravel-echo": "^1.16.0",
+        "primeicons": "^6.0.1",
+        "primevue": "^3.49.1",
         "pusher-js": "^8.4.0-rc2"
     }
 }

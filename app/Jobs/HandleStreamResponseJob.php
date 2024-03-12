@@ -48,8 +48,13 @@ class HandleStreamResponseJob implements ShouldQueue
             $allText .= $chunk;
             $sentences = preg_split(self::DELIMITER, $chunk);
             $sentences[0] = $previousText . $sentences[0];
-            for ($i = 0; $i <= count($sentences) - 1; $i++) {
-                if (empty($sentences[$i])) {
+            for ($i = 0; $i < count($sentences); $i++) {
+                if (empty($sentences[$i]) || 
+                    (
+                        $i == count($sentences) - 1 && 
+                        !$textStream->eof()
+                    )
+                ) {
                     continue;
                 }
                 event(new StreamTextChunk($this->sessionID, $sentences[$i]));
