@@ -35,6 +35,21 @@ class HandleStreamResponseJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $responseText = "";
+        try {
+            $responseText = $this->streamChatResponse();
+        } catch (\Exception $e) {
+            $responseText = LLMService::getFallbackResponse();
+            event(new StreamTextChunk($this->sessionID, $responseText));
+            Log::error($e, $e->getTrace());
+            throw $e;
+        } finally {
+            (new ChatHistoryService)->store($this->sessionID, $this->prompt, $responseText);
+        }
+    }
+
+    private function streamChatResponse(): string
+    {
         $service = new LLMService();
         $chatHistoryFilePath = (new ChatHistoryService())->getFilePath($this->sessionID);
         if ($chatHistoryFilePath) {
@@ -64,6 +79,6 @@ class HandleStreamResponseJob implements ShouldQueue
             $previousText = isset($sentences[count($sentences) - 1]) ? $sentences[count($sentences) - 1] : '';
         }
 
-        (new ChatHistoryService)->store($this->sessionID, $this->prompt, $allText);
+        return $allText;
     }
 }

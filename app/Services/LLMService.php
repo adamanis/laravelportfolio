@@ -20,6 +20,7 @@ use LLPhant\Embeddings\VectorStores\VectorStoreBase;
 
 class LLMService
 {
+    public const FALLBACK_RESPONSE = "Sorry. I do not know how to answer that. Can you try again or ask something else.";
     private ChatInterface $chat;
     private QuestionAnswering $qa;
     private EmbeddingGeneratorInterface $embeddingGenerator;
@@ -50,7 +51,6 @@ class LLMService
     public function getStreamResponse($text): StreamInterface
     {
         $this->includeDataFromFilePaths();
-
         if ($this->qa instanceof QuestionAnswering) {
             return $this->qa->answerQuestionStream($text);
         }
@@ -104,12 +104,17 @@ class LLMService
             );
         } catch (\Exception $e) {
             Log::warning(sprintf("%s failed - %s", __METHOD__, $e->getMessage()), $e->getTrace());
-            $this->chat->setSystemMessage('Whatever we ask you, you MUST answer "Sorry, I had a brainfreeze. Can you ask me again of your question"');
+            $this->chat->setSystemMessage('Whatever we ask you, you MUST answer "' . self::FALLBACK_RESPONSE . '"');
         }
     }
 
     private function getPersonalDataFilePath()
     {
         return Storage::path('interview_questions_answers.txt');
+    }
+
+    public static function getFallbackResponse()
+    {
+        return self::FALLBACK_RESPONSE;
     }
 }

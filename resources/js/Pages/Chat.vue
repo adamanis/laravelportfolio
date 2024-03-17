@@ -110,7 +110,7 @@ onMounted(() => {
                         <div class="flex items-center m-1 py-1 px-4 rounded bg-slate-200 dark:bg-gray-900">
                             <InputGroup class="bg-slate-200 dark:bg-gray-900">
                                 <InputText class="bg-slate-200 dark:bg-gray-900 border-none outline-none focus:[box-shadow:none]" placeholder="Ask me anything..." v-model="form.question"/>
-                                <Button class="border-none hover:bg-slate-300 dark:hover:bg-gray-800 icon-color" icon="pi pi-caret-right" type="submit" :disabled="form.processing || !form.question || chatState?.type == 'thinking'" style="justify-content:flex-start;" />
+                                <Button v-if="chatState?.type == 'idle'" class="border-none hover:bg-slate-300 dark:hover:bg-gray-800 icon-color" icon="pi pi-caret-right" type="submit" :disabled="form.processing || !form.question" style="justify-content:flex-start;" />
                             </InputGroup>
                         </div>
                     </form>
