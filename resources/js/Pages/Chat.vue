@@ -18,6 +18,7 @@ const props = defineProps({ session_id: String, chat_images: Object });
 const texts = ref<object[]>([]);
 const prompts = ref<PromptModel[]>([]);
 const chatState = ref<ChatState>();
+const chatContainer = ref<HTMLDivElement|null>(null);
 
 const form = useForm({
     question: null,
@@ -31,8 +32,15 @@ function submit()
             prompts.value.push({type: 'question', text: form.question ?? ''});
             form.reset('question');
             chatState.value = {type: "thinking"};
+            chatScrollBottom();
         },
     });
+}
+
+function chatScrollBottom()
+{
+    const chatDiv = chatContainer.value!;
+    chatDiv?.scroll({ top: chatDiv.scrollHeight, behavior: "smooth" });
 }
 
 async function respondingAnimation()
@@ -45,6 +53,7 @@ const listenForTextStream = (session_id? : string) => {
     console.log('listening');
     window.Echo.channel(session_id + '_text-stream').listen('StreamTextChunk', (data: any) => {
         console.log(data);
+        chatScrollBottom();
         prompts.value.push({type: 'answer', text: data.textChunk});
         respondingAnimation();
     });
@@ -83,7 +92,6 @@ const chatSmallImagePath = computed(() => {
 onMounted(() => {
     chatState.value = {type: "idle"};
     listenForTextStream(props.session_id);
-
 });
 
 </script>
@@ -93,7 +101,7 @@ onMounted(() => {
     <div class="dark:bg-gray-800 dark:text-white">
         <div class="max-w-7xl mx-auto h-screen flex justify-center">
             <div class="xl:w-5/6 w-screen max-w-4xl flex flex-col">
-                <div class="dark:bg-gray-800 grow p-4 space-y-4 overflow-y-auto">
+                <div ref="chatContainer" class="dark:bg-gray-800 grow p-4 space-y-4 overflow-y-auto">
                     <ScrollTop class="right-5 bg-slate-300 dark:bg-gray-900 icon-color"/>
                     <Prompt v-for="(prompt, index) in prompts" :key="index" :promptDetails="prompt"></Prompt>
                     <p v-for="(text, index) in texts" :key="index">{{ text }}</p>
