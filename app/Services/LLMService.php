@@ -41,7 +41,7 @@ class LLMService
     {
         $this->includeDataFromFilePaths();
 
-        if ($this->qa instanceof QuestionAnswering) {
+        if (!empty($this->qa) && $this->qa instanceof QuestionAnswering) {
             return $this->qa->answerQuestion($text);
         }
 
@@ -51,7 +51,7 @@ class LLMService
     public function getStreamResponse($text): StreamInterface
     {
         $this->includeDataFromFilePaths();
-        if ($this->qa instanceof QuestionAnswering) {
+        if (!empty($this->qa) && $this->qa instanceof QuestionAnswering) {
             return $this->qa->answerQuestionStream($text);
         }
 
